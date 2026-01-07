@@ -1,0 +1,246 @@
+# Storage Examples - Volumes, PV, PVC
+
+## Persistent Volume (PV)
+
+```yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  hostPath:
+    path: /mnt/data
+```
+
+## Persistent Volume Claim (PVC)
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
+```
+
+## Storage Class
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast-storage
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp3
+  iopsPerGB: "10"
+  encrypted: "true"
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+```
+
+## Pod with PVC
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-pod
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: data
+      mountPath: /usr/share/nginx/html
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: my-pvc
+```
+
+## StatefulSet with PVC
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  serviceName: "nginx"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+```
+
+## EmptyDir Volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: emptydir-pod
+spec:
+  containers:
+  - name: writer
+    image: busybox
+    command: ['sh', '-c', 'while true; do date >> /data/log.txt; sleep 5; done']
+    volumeMounts:
+    - name: cache
+      mountPath: /data
+  - name: reader
+    image: busybox
+    command: ['sh', '-c', 'tail -f /data/log.txt']
+    volumeMounts:
+    - name: cache
+      mountPath: /data
+  volumes:
+  - name: cache
+    emptyDir: {}
+```
+
+## HostPath Volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-pod
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: host-volume
+      mountPath: /data
+  volumes:
+  - name: host-volume
+    hostPath:
+      path: /var/data
+      type: DirectoryOrCreate
+```
+
+## NFS Volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-pod
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: nfs-volume
+      mountPath: /data
+  volumes:
+  - name: nfs-volume
+    nfs:
+      server: nfs-server.example.com
+      path: /exported/path
+```
+
+## ConfigMap as Volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-volume
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: config
+      mountPath: /etc/config
+  volumes:
+  - name: config
+    configMap:
+      name: my-config
+```
+
+## Secret as Volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-volume
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: secret
+      mountPath: /etc/secrets
+      readOnly: true
+  volumes:
+  - name: secret
+    secret:
+      secretName: my-secret
+```
+
+## Projected Volume
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: projected-volume
+spec:
+  containers:
+  - name: app
+    image: nginx:1.21
+    volumeMounts:
+    - name: all-in-one
+      mountPath: /projected-volume
+  volumes:
+  - name: all-in-one
+    projected:
+      sources:
+      - secret:
+          name: my-secret
+      - configMap:
+          name: my-config
+      - downwardAPI:
+          items:
+          - path: "labels"
+            fieldRef:
+              fieldPath: metadata.labels
+```

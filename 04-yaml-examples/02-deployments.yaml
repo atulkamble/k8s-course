@@ -1,0 +1,452 @@
+# Deployment Examples
+
+## Basic Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+```
+
+## Deployment with Rolling Update Strategy
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rolling-deployment
+spec:
+  replicas: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app
+        image: myapp:v1
+        ports:
+        - containerPort: 8080
+```
+
+## Deployment with Resource Limits
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+      - name: webapp
+        image: nginx:1.21
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 80
+```
+
+## Deployment with Health Probes
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: healthapp
+  template:
+    metadata:
+      labels:
+        app: healthapp
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+        startupProbe:
+          httpGet:
+            path: /startup
+            port: 80
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          failureThreshold: 30
+```
+
+## Deployment with Environment Variables
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: env-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: envapp
+  template:
+    metadata:
+      labels:
+        app: envapp
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest
+        env:
+        - name: DATABASE_HOST
+          value: "postgres.default.svc.cluster.local"
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: APP_ENV
+          value: "production"
+        - name: LOG_LEVEL
+          value: "info"
+```
+
+## Deployment with ConfigMap and Secrets
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: configapp
+  template:
+    metadata:
+      labels:
+        app: configapp
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest
+        env:
+        - name: CONFIG_VALUE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: config.key
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: password
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+        - name: secret-volume
+          mountPath: /etc/secrets
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+      - name: secret-volume
+        secret:
+          secretName: app-secret
+```
+
+## Deployment with Persistent Volume
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pv-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pvapp
+  template:
+    metadata:
+      labels:
+        app: pvapp
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.21
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: my-pvc
+```
+
+## Deployment with Init Container
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: init-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: initapp
+  template:
+    metadata:
+      labels:
+        app: initapp
+    spec:
+      initContainers:
+      - name: init-db
+        image: busybox
+        command: ['sh', '-c', 'until nslookup db-service; do echo waiting for db; sleep 2; done;']
+      containers:
+      - name: app
+        image: myapp:latest
+        ports:
+        - containerPort: 8080
+```
+
+## Deployment with Multiple Containers
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multi-container-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: multiapp
+  template:
+    metadata:
+      labels:
+        app: multiapp
+    spec:
+      containers:
+      - name: web
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: shared-data
+          mountPath: /usr/share/nginx/html
+      - name: logger
+        image: busybox
+        command: ['sh', '-c', 'while true; do echo "$(date) - Logging" >> /var/log/app.log; sleep 10; done']
+        volumeMounts:
+        - name: shared-data
+          mountPath: /var/log
+      volumes:
+      - name: shared-data
+        emptyDir: {}
+```
+
+## Deployment with Node Affinity
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affinity-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: affinityapp
+  template:
+    metadata:
+      labels:
+        app: affinityapp
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: disktype
+                operator: In
+                values:
+                - ssd
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - affinityapp
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: app
+        image: nginx:1.21
+```
+
+## Blue-Green Deployment Setup
+
+```yaml
+# Blue Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-blue
+  labels:
+    app: myapp
+    version: blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: blue
+    spec:
+      containers:
+      - name: app
+        image: myapp:v1
+        ports:
+        - containerPort: 8080
+---
+# Green Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-green
+  labels:
+    app: myapp
+    version: green
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+      version: green
+  template:
+    metadata:
+      labels:
+        app: myapp
+        version: green
+    spec:
+      containers:
+      - name: app
+        image: myapp:v2
+        ports:
+        - containerPort: 8080
+```
+
+## Canary Deployment
+
+```yaml
+# Main Deployment (90% traffic)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-main
+spec:
+  replicas: 9
+  selector:
+    matchLabels:
+      app: myapp
+      track: stable
+  template:
+    metadata:
+      labels:
+        app: myapp
+        track: stable
+    spec:
+      containers:
+      - name: app
+        image: myapp:v1
+        ports:
+        - containerPort: 8080
+---
+# Canary Deployment (10% traffic)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp
+      track: canary
+  template:
+    metadata:
+      labels:
+        app: myapp
+        track: canary
+    spec:
+      containers:
+      - name: app
+        image: myapp:v2
+        ports:
+        - containerPort: 8080
+```
