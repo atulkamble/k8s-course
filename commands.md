@@ -124,4 +124,82 @@ kubectl rollout restart daemonset node-monitor
 kubectl logs -l app=monitor
 kubectl delete ds node-monitor
 
+//create job 
+kubectl apply -f job.yaml
+kubectl get jobs
+kubectl get jobs -o wide
+kubectl get jobs -w
+kubectl describe job batch-job
+kubectl get pods
+kubectl get pods --selector=job-name=batch-job
+kubectl get pods -o wide
+kubectl logs $(kubectl get pods --selector=job-name=batch-job -o jsonpath='{.items[0].metadata.name}')
+kubectl get job batch-job
+kubectl get job batch-job -o jsonpath='{.status.succeeded}'
+kubectl get job batch-job -o jsonpath='{.status.failed}'
+kubectl get events --sort-by=.metadata.creationTimestamp
+kubectl describe pod $(kubectl get pods --selector=job-name=batch-job -o jsonpath='{.items[0].metadata.name}')
+kubectl apply -f job.yaml --dry-run=client
+kubectl get job batch-job -o yaml > exported-job.yaml
+kubectl delete job batch-job
+kubectl apply -f job.yaml
+kubectl delete job batch-job --cascade=foreground
+kubectl create job echo-job --image=busybox -- echo "Hello Kubernetes"
+kubectl delete jobs --all
+
+// cron job 
+kubectl apply -f cron-job.yaml
+kubectl explain cronjob.spec.jobTemplate.spec.template.spec
+kubectl get cronjob
+kubectl describe cronjob daily-job
+kubectl get events --sort-by=.metadata.creationTimestamp
+kubectl get pods
+kubectl logs <pod-name>
+nano cron-job.yaml
+kubectl create job test-job --from=cronjob/daily-job
+kubectl get jobs
+kubectl describe job test-job
+kubectl get jobs --watch
+kubectl get pods --watch
+kubectl delete cronjob daily-job
+kubectl delete job test-job
+kubectl delete pod <pod-name>
+
+// create hpa
+nano hpa.yaml
+kubectl apply -f hpa.yaml 
+cat hpa.yam
+nano hpa.yaml
+cat hpa.yaml
+kubectl apply -f hpa.yaml
+kubectl delete -f hpa.yaml
+kubectl replace -f hpa.yaml
+kubectl get hpa
+kubectl get hpa web-hpa
+kubectl describe hpa web-hpa
+kubectl explain hpa
+kubectl explain hpa.spec
+kubectl explain hpa.spec.metrics
+kubectl get deployments
+kubectl get deployment web-deployment
+kubectl describe deployment web-deployment
+kubectl get pods -l app=web
+kubectl top nodes
+kubectl top pods
+kubectl top pods -l app=web
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/pods
+kubectl get --raw /apis/metrics.k8s.io/v1beta1/nodes
+kubectl get pods -w
+kubectl describe hpa web-hpa
+kubectl get events --sort-by=.metadata.creationTimestamp
+kubectl get deployment metrics-server -n kube-system
+kubectl logs -n kube-system deployment/metrics-server
+kubectl get apiservices | grep metrics
+kubectl run load-generator \
+  --image=busybox \
+  --restart=Never \
+  -- /bin/sh -c "while true; do wget -q -O- http://web-service; done"
+kubectl delete pod load-generator
+kubectl delete hpa web-hpa
+kubectl delete deployment web-deployment
 ```
