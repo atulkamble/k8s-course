@@ -202,4 +202,9 @@ kubectl run load-generator \
 kubectl delete pod load-generator
 kubectl delete hpa web-hpa
 kubectl delete deployment web-deployment
+
+az group delete \
+  --name aks \
+  --yes \
+  --no-wait
 ```
