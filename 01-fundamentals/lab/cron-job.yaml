@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: daily-job
+spec:
+  schedule: "0 2 * * *"   # Every day at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: daily-task
+            image: busybox
+            command:
+            - sh
+            - -c
+            - echo "Hello from Kubernetes CronJob"
+          restartPolicy: OnFailure
